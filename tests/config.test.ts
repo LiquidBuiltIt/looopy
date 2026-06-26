@@ -12,11 +12,11 @@ import {
 describe("parseConfig", () => {
   it("parses a valid config", () => {
     const cfg: WorkflowConfig = parseConfig({
-      skill: "outreach-orchestrator",
+      skill: "example-orchestrator",
       version: "1.0.0",
       params: [{ name: "mode", required: true }],
     });
-    expect(cfg.skill).toBe("outreach-orchestrator");
+    expect(cfg.skill).toBe("example-orchestrator");
     expect(cfg.version).toBe("1.0.0");
     expect(cfg.params).toEqual([{ name: "mode", required: true }]);
   });

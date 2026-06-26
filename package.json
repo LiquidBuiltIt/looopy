@@ -16,8 +16,7 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev": "tsx src/cli.ts",
-    "version.bump": "npx tsx scripts/version.bump.ts"
+    "dev": "tsx src/cli.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

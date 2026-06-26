@@ -132,15 +132,15 @@ describe("composeHandoff", () => {
 
   it("includes the resolved workflow name", () => {
     const text = composeHandoff({
-      workflowName: "reddit-outreach",
-      workflowPath: "/some/path/reddit-outreach",
+      workflowName: "example-flow",
+      workflowPath: "/some/path/example-flow",
       skillName: "my-skill",
       skillFound: true,
       skillCandidates: ["my-skill"],
       params: [],
       paramsInferred: true,
     });
-    expect(text).toContain("reddit-outreach");
+    expect(text).toContain("example-flow");
   });
 
   it("surfaces candidate skill names when skill not found", () => {

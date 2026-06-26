@@ -27,10 +27,10 @@ describe("discoverWorkflows", () => {
 
   it("finds nested workflows as relative slash paths, sorted", () => {
     mkWorkflow(root, "paid-research-hustles");
-    mkWorkflow(root, "supersurf/outreach/reddit");
+    mkWorkflow(root, "parent/child/grandchild");
     expect(discoverWorkflows(root)).toEqual([
       "paid-research-hustles",
-      "supersurf/outreach/reddit",
+      "parent/child/grandchild",
     ]);
   });
 

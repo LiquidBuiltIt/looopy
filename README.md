@@ -1,101 +1,101 @@
 # looopy
 
-Dispatch `~/Agents/Operator/` workflows as fire-and-forget background Claude
-runs, with **enforced outcome reporting** — every run terminates into a
-recorded `success`/`failure` verdict you can review from the CLI.
+**An opinionated runtime that makes autonomous [Claude Code](https://docs.anthropic.com/en/docs/claude-code) workflows accountable.**
 
-A workflow is any directory under your library home (`~/Agents/Operator/`,
-override with `OPERATOR_ROOT`) that contains a `.looopy/config.json`. That
-file is the only marker — drop one in and the directory becomes callable.
-There is no separate registration step.
+Fire-and-forget background agents are easy to launch and hard to trust. You kick one off, close the laptop, and hours later you have… what? A process that may have finished, half-finished, or quietly done the wrong thing — with no record either way.
+
+looopy closes that loop. Every workflow is dispatched as a background Claude Code run and *forced* to terminate into a recorded verdict: **did it succeed, why, how confident, and what did it do.** No silent exits. Each outcome lands in an append-only ledger you can review and — because every run is stamped with the workflow's version — measure for regressions over time.
+
+> **looopy is the tool. Operator is the library it runs** — a directory of workflows on your machine (`~/Agents/Operator/` by default). looopy dispatches them; Operator holds them.
+
+---
+
+## Why
+
+Three things every serious autonomous workflow needs that a bare `claude --bg` doesn't give you:
+
+1. **A verdict, always.** A run that ends without saying what happened is a run you can't trust. looopy injects an enforcement layer at dispatch — an MCP report tool plus a Stop-hook gate — so a run *cannot* end without recording its outcome.
+2. **A durable record.** Outcomes append to a per-workflow `runs.jsonl` ledger: status, reasoning, confidence, summary, parameters, and the config version the run executed under.
+3. **Regression tracking.** Versioning is mandatory. Stamp a version on each workflow, bump it when you change one, and the ledger lets you compare how a new version performs against the old.
+
+Enforcement is *injected*, never written into your workflow directory — your workflows stay yours. looopy is opinionated about the **envelope** (every run is accountable), not about what the work is.
 
 ## Install
 
-    npm install && npm run build
-    npm link        # exposes `looopy` on PATH
+> Published to npm as `looopy` soon. For now, install from source.
 
-Requires Claude Code with `--bg`, `--permission-mode auto`, inline
-`--mcp-config`, and inline `--settings` (Opus/Sonnet 4.6+).
+```bash
+git clone <repo-url> looopy
+cd looopy
+npm install
+npm run build
+npm link        # puts `looopy` on your PATH
+```
+
+**Requirements:**
+
+- Node ≥ 20
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) on your `PATH` — looopy shells out to `claude` to dispatch runs. It uses `--bg`, `--permission-mode auto`, and inline `--mcp-config` / `--settings`, so you need a build that supports those (Opus / Sonnet 4.6+).
+
+## Quickstart
+
+```bash
+looopy init                 # scaffold the workflow-library home (~/Agents/Operator)
+looopy new hello            # scaffold a workflow at <home>/hello
+# edit hello/.looopy/config.json — set "skill" and a "version"
+looopy validate hello       # check the config + wiring before running
+looopy run hello --name=world "optional run note"   # dispatch in the background
+looopy report hello         # review recorded outcomes
+```
+
+## How it works
+
+A **workflow** is any directory under your library home that contains a `.looopy/config.json`. Discovery is filesystem-only — drop the file in and the directory is callable. There is no registry to keep in sync.
+
+```jsonc
+// <home>/hello/.looopy/config.json
+{
+  "skill": "my-skill",     // the skill the dispatched run invokes (required)
+  "version": "0.1.0",      // stamped onto every run for regression tracking (required)
+  "params": [              // typed inputs, passed as --key=value at dispatch
+    { "name": "name", "required": true, "description": "who to greet" }
+  ]
+}
+```
+
+When you `run` a workflow, looopy:
+
+1. Resolves the config, validates the parameters you passed, and composes a minimal prompt (`Invoke the <skill> skill. Params: …`).
+2. Launches a background `claude --bg --permission-mode auto` with the workflow dir as cwd, and the enforcement layer injected: `--mcp-config` registers the `looopy_report` tool; `--settings` installs the Stop-hook gate.
+3. The run does its work and reports a verdict via `looopy_report` (`{ status, reasoning, confidence, action_summary }`). The Stop-hook gate refuses to let the run end until it does — with a backstop that records a `failure` verdict if the agent never complies.
+4. The outcome appends to `<workflow>/.looopy/runs.jsonl`.
+
+Because enforcement is supplied fresh on every dispatch, a workflow physically cannot drift out of compliance — there's nothing on disk to forget or edit.
 
 ## Commands
 
-    looopy init                       # scaffold the library home
-    looopy new <name>                 # scaffold a new (empty) workflow
-    looopy onboard <path>             # scaffold + infer config for an existing workflow dir
-    looopy validate <path>            # check a workflow's config + skill wiring
-    looopy run <path> [--k=v ...] "note"   # dispatch a workflow in the background
-    looopy ls                         # list discovered workflows
-    looopy status [path]              # list live looopy-spawned runs
-    looopy logs <id>                  # tail a run's output
-    looopy stop <id>                  # kill a run
-    looopy report [workflow] [-n N]   # review recorded run outcomes
+| Command | What it does |
+|---|---|
+| `looopy init` | Scaffold the workflow-library home |
+| `looopy new <name>` | Scaffold a new workflow |
+| `looopy onboard <path>` | Scaffold + infer config for an existing workflow dir |
+| `looopy validate <path>` | Validate a workflow's config and wiring |
+| `looopy ls` | List discovered workflows |
+| `looopy run <wf> [--key=value …] [note]` | Dispatch a workflow in the background |
+| `looopy status [wf]` (alias `ps`) | List live looopy-spawned runs |
+| `looopy logs <id>` | Print recent output of a run |
+| `looopy stop <id>` | Stop a run |
+| `looopy report [wf] [-n N]` | Review recorded run outcomes |
 
-`mcp-serve` and `stop-gate` also exist but are **internal** — looopy injects
-them into each `claude --bg` dispatch; you never call them by hand.
+## Configuration
 
-## `.looopy/config.json`
+- **`OPERATOR_ROOT`** — override the workflow-library home (default `~/Agents/Operator`). Supports `~` expansion. The variable names the *library* (Operator), which is why it keeps that name.
+- Auth tokens (`ANTHROPIC_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`) are stripped from a run's child environment unless a workflow explicitly declares it needs them — runs don't silently inherit your shell credentials.
 
-    {
-      "skill": "job-hunter-orchestrator",
-      "version": "1.0.0",
-      "params": [
-        { "name": "profile", "required": true,
-          "description": "candidate profile under profiles/ to run for" },
-        { "name": "target", "required": false,
-          "description": "qualified leads to apply to this run (default 5)" }
-      ]
-    }
+## Status
 
-- `skill` — the skill the dispatched agent invokes.
-- `version` — **required.** A free-form version string you bump when the
-  workflow's behavior changes. It is stamped onto every run in `runs.jsonl`,
-  so run outcomes split cleanly across versions for regression/perf tracking.
-  A config without a version fails `validate` and will not `run`.
-- `params[]` — each `{ name, required, description? }`. `description` is
-  optional but is rendered into the dispatch prompt so the agent understands
-  what each param is for.
+Early and under active development. The core loop — dispatch, enforce, record, version — works and is covered by tests (`npm test`). Interfaces may still shift.
 
-`run` validates required params (hard error if missing), composes a minimal
-prompt (`Invoke the <skill> skill. Params: k=v (description), …`), and launches
-`claude --bg --permission-mode auto` with the workflow dir as cwd.
+## License
 
-## Outcome reporting & enforcement
-
-Claude Code tracks *lifecycle* (working/idle/blocked/done), not *outcome*. So
-looopy adds an outcome layer, injected **inline at dispatch** — nothing is
-written into the workflow dir:
-
-- `--mcp-config` registers an `looopy_report` MCP tool. The agent must call
-  it as its final action with `{ status, reasoning, confidence, action_summary }`.
-- `--settings` installs a Stop hook (`stop-gate`) that blocks turn-end until
-  `looopy_report` has been called, with a 3-bounce backstop that records a
-  `failure` verdict if the agent never complies.
-
-Verdicts append to `<workflow>/.looopy/runs.jsonl`. Review them with:
-
-    looopy report                     # latest run per workflow
-    looopy report <workflow>          # that workflow's history (tail)
-    looopy report <workflow> -n 5     # last 5
-
-Because enforcement is supplied fresh on every dispatch, a workflow physically
-cannot drift out of compliance — there is nothing on disk to forget or edit.
-
-## Onboarding a workflow
-
-Discovery is filesystem-only, so onboarding is just producing a valid
-`.looopy/config.json`. The CLI does the mechanical half; an agent (or a
-human who reads the workflow) does the comprehension half.
-
-    looopy onboard <path>
-
-This creates the config skeleton, infers the `skill` from the workflow's
-`.claude/skills/*/SKILL.md` frontmatter, infers param candidates from the
-script's `// args: { … }` comment (a trailing `?` marks optional), and prints a
-handoff block with the remaining work — verify the skill, confirm params, write
-descriptions, then:
-
-    looopy validate <path>
-
-`validate` is the deterministic gate: config parses, `version` is present,
-`skill` is non-empty, the named skill exists on disk, params are well-formed.
-Descriptions are optional — validity is not the same as description completeness.
+MIT

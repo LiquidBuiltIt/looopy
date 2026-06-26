@@ -35,7 +35,7 @@ describe("newWorkflow", () => {
   afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
 
   it("creates a nested workflow dir + skeleton config", () => {
-    const dir = newWorkflow(root, "supersurf/outreach/reddit");
+    const dir = newWorkflow(root, "parent/child/grandchild");
     const cfg = path.join(dir, ".looopy/config.json");
     expect(fs.existsSync(cfg)).toBe(true);
     expect(JSON.parse(fs.readFileSync(cfg, "utf8"))).toEqual({

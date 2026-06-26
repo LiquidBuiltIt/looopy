@@ -100,13 +100,13 @@ describe("formatStatus", () => {
   it("matches the short recorded id against claude's full UUID and displays the short id", () => {
     // looopy records the short banner id; claude reports the full UUID.
     const sessions = new Map<string, OperatorSession>([
-      ["6ba57ec8", { workflow: "job-hunter", outcome: "failure" }],
+      ["6ba57ec8", { workflow: "greeter", outcome: "failure" }],
     ]);
     const agents = [
-      { sessionId: "6ba57ec8-6216-4579-836e-100c9c2db648", state: "done", cwd: "/root/job-hunter" },
+      { sessionId: "6ba57ec8-6216-4579-836e-100c9c2db648", state: "done", cwd: "/root/greeter" },
     ];
     const out = formatStatus(agents, sessions);
-    expect(out).toContain("job-hunter\t6ba57ec8\tdone\tfailure");
+    expect(out).toContain("greeter\t6ba57ec8\tdone\tfailure");
   });
 });
 

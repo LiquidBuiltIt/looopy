@@ -37,8 +37,8 @@ describe("checkRequiredParams", () => {
 
 describe("composePrompt", () => {
   it("includes skill and params", () => {
-    const result = composePrompt("reddit-skill", { mode: "pitch", cap: "3" });
-    expect(result).toContain("Invoke the reddit-skill skill.\nParams: mode=pitch, cap=3.");
+    const result = composePrompt("example-skill", { mode: "pitch", cap: "3" });
+    expect(result).toContain("Invoke the example-skill skill.\nParams: mode=pitch, cap=3.");
     expect(result).toContain("looopy_report");
   });
 
@@ -56,7 +56,7 @@ describe("composePrompt", () => {
 
   it("renders description alongside value when spec has one", () => {
     const result = composePrompt(
-      "job-hunter",
+      "greeter",
       { profile: "aidan-rodriguez" },
       undefined,
       [{ name: "profile", required: true, description: "the candidate profile to run the cycle for" }],
@@ -66,7 +66,7 @@ describe("composePrompt", () => {
 
   it("renders plain k=v when spec has no description", () => {
     const result = composePrompt(
-      "job-hunter",
+      "greeter",
       { mode: "pitch" },
       undefined,
       [{ name: "mode", required: true }],
@@ -78,7 +78,7 @@ describe("composePrompt", () => {
 
 describe("dispatch", () => {
   const config: WorkflowConfig = {
-    skill: "reddit-skill",
+    skill: "example-skill",
     params: [{ name: "mode", required: true }],
   };
 
@@ -110,7 +110,7 @@ describe("dispatch", () => {
       "auto",
     ]);
     const lastArg = calls[0].args[calls[0].args.length - 1];
-    expect(lastArg).toContain("Invoke the reddit-skill skill");
+    expect(lastArg).toContain("Invoke the example-skill skill");
     expect(calls[0].opts.cwd).toBe(dir);
   });
 
@@ -157,7 +157,7 @@ describe("dispatch wiring", () => {
     };
     const id = dispatch({
       workflowDir: dir,
-      config: { skill: "reddit-skill", params: [] },
+      config: { skill: "example-skill", params: [] },
       params: { mode: "pitch" },
       env: {},
       run,
@@ -181,7 +181,7 @@ describe("dispatch wiring", () => {
     const run = () => ({ status: 0, stdout: "sess_v\n", stderr: "" });
     dispatch({
       workflowDir: dir,
-      config: { skill: "reddit-skill", version: "3.0.1", params: [] },
+      config: { skill: "example-skill", version: "3.0.1", params: [] },
       params: {},
       env: {},
       run,
@@ -219,7 +219,7 @@ describe("dispatch wiring — realistic claude --bg stdout", () => {
     });
     const id = dispatch({
       workflowDir: dir,
-      config: { skill: "reddit-skill", params: [] },
+      config: { skill: "example-skill", params: [] },
       params: { mode: "pitch" },
       env: {},
       run,
